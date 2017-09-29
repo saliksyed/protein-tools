@@ -5,9 +5,10 @@ import xml.etree.ElementTree as etree
 names = open("data/names.txt", "r").readlines()
 
 class Bond:
-	def __init__(self, atom1, atom2):
+	def __init__(self, atom1, atom2, forcefield):
 		self.atom1 = atom1
 		self.atom2 = atom2
+		self.forcefield = forcefield
 
 	def get_atom_1(self):
 		return self.atom1
@@ -15,12 +16,14 @@ class Bond:
 	def get_atom_2(self):
 		return self.atom2
 
-
 class Atom:
-	def __init__(self, atom_name, pos, bonds=[]): # TODO look up data from amber for atom based on name
+	def __init__(self, atom_name, pos, forcefield, bonds=[]): # TODO look up data from amber for atom based on name
 		self.name = atom_name
 		self.pos = pos
 		self.bonds = bonds
+		self.forcefield = forcefield
+
+
 
 class Topology:
 	def __init__(self):
@@ -41,6 +44,26 @@ class Residue:
 		self.symbol = symbol
 		# TODO: build topology for residue from amber + residue data
 		self.forcefield = forcefield
+		self.init()
+
+	def init(self):
+		self.topology = Topology()
+		geometry = self.forcefield.get_geometry_for_residue(self.symbol)
+		atoms = self.forcefield.get_atoms_for_residue(self.symbol)
+		bonds = self.forcefield.get_bonds_for_residue(self.symbol)
+		for atom in geometry:
+			symbol = atom[0]
+			#a = self.forcefield.get_atom(symbol, pos=atom[-3:])
+			#self.topology.add_atom(a)
+
+		# generate the bonds
+		print atoms
+		print bonds
+
+	def add_bond_to_nitrogen(self, next_res):
+		pass
+	def add_bond_to_carbon(self, last_res):
+		pass
 
 class Chain:
 	def __init__(self, forcefield):
@@ -75,7 +98,7 @@ class ForceField:
 			all_data = zip(atoms, residue, x, y, z)
 			residues[residue[0]] = all_data
 
-
+		self.residues = residues
 		tree = etree.parse(data_file)
 		root = tree.getroot()
 
@@ -86,6 +109,17 @@ class ForceField:
 					self.field_data[sub_child.tag] = []
 				#print sub_child.attrib
 				self.field_data[sub_child.tag].append(sub_child)
+
+
+	def get_atoms_for_residue(self, residue_name):
+		for residue in self.field_data['Residue']:
+			if residue_name == residue.attrib['name']:
+				return filter(lambda x : x.tag == 'Atom', residue)
+
+	def get_bonds_for_residue(self, residue_name):
+		for residue in self.field_data['Residue']:
+			if residue_name == residue.attrib['name']:
+				return filter(lambda x : x.tag == 'Bond', residue)
 
 	def get_geometry_for_residue(self, residue_name):
 		if residue_name in self.residues:
@@ -104,3 +138,5 @@ class ForceField:
 
 	def get_charge_params(self, atom):
 		return None
+f = ForceField()
+a = Residue('CYS', f)
