@@ -71,12 +71,11 @@ class Residue:
 		self.child_atom_idx = 0
 		self.parent_atom_idx = 0
 		self.child_peptide = None
-		self.bond_axis = None
 		self.bond_length = 1.0
 		self.color = [random.random(), random.random(), random.random()]
 
 	def get_default_conformation(self):
-		bond_length = 1.0
+		bond_length = 4.5
 		torsion_angle = 0.0
 		ret = [(bond_length, torsion_angle)]
 		if self.child_peptide:
@@ -110,28 +109,39 @@ class Residue:
 
 	def set_side_chain_geometry(self, geometry):
 		pass
-
+	
 	def add_child(self, child):
+		# TODO: Need to compute bond axis properly using geometry and forcefield dihedrals
 		loc_from = self.atoms[self.child_atom_idx].get_position()
 		loc_to = child.atoms[child.parent_atom_idx].get_position()
 		t = [loc_from[i] - loc_to[i] for i in  xrange(0, 3)]
 		self.bond_axis = Vector3(pyrr.vector.normalise(Vector3(t)))
 		self.child_peptide = child
 
-	def set_conformation(self, conformation, mat=None):
-		bond_length, torsion_angle = conformation.pop(0)
+	def set_conformation(self, conformation, mat=None, idx=0):
+		bond_length, torsion_angle = conformation[idx]
 		if (type(mat) != type(None)):
 			for atom in self.atoms:
 				if atom:
 					atom.apply_transform(mat)
 			
 		if self.child_peptide:
-			rmat = pyrr.matrix44.create_from_axis_rotation(self.bond_axis, torsion_angle)
-			tmat = pyrr.matrix44.create_from_translation(bond_length * self.bond_axis)
+			
+			loc_from = self.atoms[self.parent_atom_idx].get_position()
+			loc_to = self.atoms[self.child_atom_idx].get_position()
+			t = [loc_from[i] - loc_to[i] for i in  xrange(0, 3)]
+			t_mat = pyrr.matrix44.create_from_translation(Vector3(t))
+			if (type(mat) == type(None)):
+				mat = t_mat
+			else:
+				mat = pyrr.matrix44.multiply(mat, t_mat)
+
+			transformed_axis = Vector3(pyrr.vector.normalise(pyrr.matrix44.apply_to_vector(mat, self.bond_axis)))
+			rmat = pyrr.matrix44.create_from_axis_rotation(transformed_axis, torsion_angle)
+			tmat = pyrr.matrix44.create_from_translation(bond_length * transformed_axis)
 			curr_t = pyrr.matrix44.multiply(tmat, rmat)
-			if (type(mat) != type(None)):
-				curr_t = pyrr.matrix44.multiply(mat, curr_t)
-			self.child_peptide.set_conformation(conformation, curr_t)
+			curr_t = pyrr.matrix44.multiply(mat, curr_t)
+			self.child_peptide.set_conformation(conformation, curr_t, idx + 1)
 
 	def render(self):
 		# render each of the atoms
@@ -160,7 +170,7 @@ class Residue:
 			if a1 == None or a2 == None:
 				continue
 			pos1 = a1.get_transformed_position()
-			pos2= a2.get_transformed_position()
+			pos2 = a2.get_transformed_position()
 			glColor3f(self.color[0], self.color[1], self.color[2])
 			glVertex3f(pos1[0], pos1[1], pos1[2])
 			glVertex3f(pos2[0], pos2[1], pos2[2])
@@ -215,6 +225,7 @@ class ForceField:
 	def create_chain(self, sequence):
 		root = None
 		curr = None
+		color = 1.0 / len(sequence)
 		for i, symbol in enumerate(sequence):
 			if not symbol.rstrip():
 				continue
@@ -228,6 +239,10 @@ class ForceField:
 				tmp = curr
 				curr = self._get_residue(res_name)
 				tmp.add_child(curr)
+				curr.color[0] = color
+				curr.color[1] = 1.0
+				curr.color[2] = 0.0
+			color+= 1.0 / len(sequence)
 		return root
 
 	def _get_residue(self, residue_name):
