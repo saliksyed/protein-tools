@@ -4,7 +4,7 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
 from operator import itemgetter
-from pyrr import Matrix44, Vector3
+from pyrr import Matrix44, Vector3, Vector4
 import pyrr
 import random
 
@@ -49,11 +49,18 @@ class Atom:
 	def __init__(self, atom_name, pos, forcefield, bonds=[]):
 		self.name = atom_name
 		self.pos = pos
+		self.transformed_pos = Vector3(pos)
 		self.bonds = bonds
 		self.forcefield = forcefield
 
 	def get_position(self):
 		return self.pos
+
+	def get_transformed_position(self):
+		return self.transformed_pos
+
+	def apply_transform(self, mat):
+		self.transformed_pos = pyrr.matrix44.apply_to_vector(mat, Vector4(self.get_position() + [1.0]))
 
 class Residue:
 	def __init__(self, symbol, forcefield):
@@ -64,11 +71,27 @@ class Residue:
 		self.child_atom_idx = 0
 		self.parent_atom_idx = 0
 		self.child_peptide = None
-		self.bond_length = 4.5
-		self.torsion_angle = random.random() * 360.0
 		self.bond_axis = None
-		self.child_transform_pos = None
+		self.bond_length = 1.0
 		self.color = [random.random(), random.random(), random.random()]
+
+	def get_default_conformation(self):
+		bond_length = 1.0
+		torsion_angle = 0.0
+		ret = [(bond_length, torsion_angle)]
+		if self.child_peptide:
+			return ret + self.child_peptide.get_default_conformation()
+		else:
+			return ret 
+
+	def get_random_conformation(self):
+		bond_length = 4.5
+		torsion_angle = 0.0 #random.random() * 360.0
+		ret = [(bond_length, torsion_angle)]
+		if self.child_peptide:
+			return ret + self.child_peptide.get_random_conformation()
+		else:
+			return ret 
 
 	def add_atom(self, atom):
 		self.atoms.append(atom)
@@ -95,12 +118,27 @@ class Residue:
 		self.bond_axis = Vector3(pyrr.vector.normalise(Vector3(t)))
 		self.child_peptide = child
 
+	def set_conformation(self, conformation, mat=None):
+		bond_length, torsion_angle = conformation.pop(0)
+		if (type(mat) != type(None)):
+			for atom in self.atoms:
+				if atom:
+					atom.apply_transform(mat)
+			
+		if self.child_peptide:
+			rmat = pyrr.matrix44.create_from_axis_rotation(self.bond_axis, torsion_angle)
+			tmat = pyrr.matrix44.create_from_translation(bond_length * self.bond_axis)
+			curr_t = pyrr.matrix44.multiply(tmat, rmat)
+			if (type(mat) != type(None)):
+				curr_t = pyrr.matrix44.multiply(mat, curr_t)
+			self.child_peptide.set_conformation(conformation, curr_t)
+
 	def render(self):
 		# render each of the atoms
 		for i, atom in enumerate(self.atoms):
 			if atom != None:
 				r = 0.1
-				pos = atom.get_position()
+				pos = atom.get_transformed_position()
 				glPushMatrix()
 				glTranslatef(pos[0], pos[1], pos[2])
 				if i == self.child_atom_idx:
@@ -121,8 +159,8 @@ class Residue:
 			a2 = bond.get_atom_2()
 			if a1 == None or a2 == None:
 				continue
-			pos1 = a1.get_position()
-			pos2= a2.get_position()
+			pos1 = a1.get_transformed_position()
+			pos2= a2.get_transformed_position()
 			glColor3f(self.color[0], self.color[1], self.color[2])
 			glVertex3f(pos1[0], pos1[1], pos1[2])
 			glVertex3f(pos2[0], pos2[1], pos2[2])
@@ -132,18 +170,13 @@ class Residue:
 			glLineWidth(8.0)
 			glBegin(GL_LINES)
 			glColor3f(1.0, 0.0, 0.0)
-			loc_from = self.atoms[self.child_atom_idx].get_position()
-			loc_to = self.child_peptide.atoms[self.child_peptide.parent_atom_idx].get_position()
+			loc_from = self.atoms[self.child_atom_idx].get_transformed_position()
+			loc_to = self.child_peptide.atoms[self.child_peptide.parent_atom_idx].get_transformed_position()
 			glVertex3f(loc_from[0], loc_from[1], loc_from[2])
 			glColor3f(0.0, 0.0, 1.0)
-			glVertex3f(self.bond_axis.x*self.bond_length + loc_to[0], self.bond_axis.y*self.bond_length + loc_to[1], self.bond_axis.z*self.bond_length + loc_to[2])
+			glVertex3f(loc_to[0], loc_to[1], loc_to[2])
 			glEnd()
-			glPushMatrix()
-			self.torsion_angle += (random.random() - 0.5) * 5.0
-			glTranslatef(self.bond_axis.x*self.bond_length, self.bond_axis.y*self.bond_length, self.bond_axis.z*self.bond_length)
-			glRotatef(self.torsion_angle, self.bond_axis.x, self.bond_axis.y, self.bond_axis.z)
 			self.child_peptide.render()
-			glPopMatrix()
 
 class ForceField:
 	def __init__(self, data_file="data/amber99sb.xml"):
@@ -217,7 +250,7 @@ class ForceField:
 			numbers = filter(lambda x : x.isdigit(), symbol)
 			symbol_normalized = "".join(letters + numbers)
 			if symbol_normalized in atom_names:
-				atom_geomtery[symbol_normalized] = atom[-3:]
+				atom_geomtery[symbol_normalized] = list(atom[-3:])
 
 		ret = Residue(residue_name, self)
 		for atom in atoms:
