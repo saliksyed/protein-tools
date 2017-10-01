@@ -4,8 +4,9 @@ Tools to generate unfolded protein models from amino-acid sequences
 
 ### Features
 * Convert amino-acid sequence into unfolded topology
-* (TODO) Set backbone conformation using torsion angles
+* Set backbone conformation using torsion angles
 
+![Screenshot](https://github.com/saliksyed/protein-tools/blob/master/docs/screenshot.png)
 
 ### Usage
 
