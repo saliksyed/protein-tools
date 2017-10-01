@@ -65,7 +65,7 @@ class Residue:
 		self.parent_atom_idx = 0
 		self.child_peptide = None
 		self.bond_length = 4.5
-		self.torsion_angle = 0.0
+		self.torsion_angle = random.random() * 360.0
 		self.bond_axis = None
 		self.child_transform_pos = None
 		self.color = [random.random(), random.random(), random.random()]
@@ -139,8 +139,9 @@ class Residue:
 			glVertex3f(self.bond_axis.x*self.bond_length + loc_to[0], self.bond_axis.y*self.bond_length + loc_to[1], self.bond_axis.z*self.bond_length + loc_to[2])
 			glEnd()
 			glPushMatrix()
+			self.torsion_angle += (random.random() - 0.5) * 5.0
 			glTranslatef(self.bond_axis.x*self.bond_length, self.bond_axis.y*self.bond_length, self.bond_axis.z*self.bond_length)
-			glRotatef(random.random()*5.0, self.bond_axis.x, self.bond_axis.y, self.bond_axis.z)
+			glRotatef(self.torsion_angle, self.bond_axis.x, self.bond_axis.y, self.bond_axis.z)
 			self.child_peptide.render()
 			glPopMatrix()
 

@@ -1,13 +1,10 @@
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
-import sys
-import math
-import traceback
-from topology import *
 from pyshader import Editor
 
-class Viz(Editor):
+
+class Visualizer(Editor):
     def __init__(self, resolution, chain):
         Editor.__init__(self, resolution)
         self.chain = chain
@@ -30,10 +27,3 @@ class Viz(Editor):
         except:
             traceback.print_exc()
             raw_input("?")
-
-
-f = ForceField()
-villin = """MTKLSAQVKGSLNITTPG"""
-c = f.create_chain(villin) # todo HISTIDINE
-r = Viz(Viz.RES1080P, c)
-r.run()
