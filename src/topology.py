@@ -1,10 +1,37 @@
-
+import xml.etree.ElementTree as etree
+import numpy as np
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 from OpenGL.GL import *
 from operator import itemgetter
-import xml.etree.ElementTree as etree
+from pyrr import Matrix44, Vector3
+import pyrr
+import random
 
+class SYMBOL:
+	NITROGEN = "N"
+	CARBON = "C"
+	ALA = "ALA"
+	ARG = "ARG"
+	ASN = "ASN"
+	ASP = "ASP"
+	CYS = "CYS"
+	GLN = "GLN"
+	GLU = "GLU"
+	GLY = "GLY"
+	HIS = "HIS"
+	HIS_DEFAULT_ISOMER = "HIE"
+	ILE = "ILE"
+	LEU = "LEU"
+	LYS = "LYS"
+	MET = "MET"
+	PRO = "PRO"
+	PHE = "PHE"
+	SER = "SER"
+	THR = "THR"
+	TRP = "TRP"
+	TYR = "TYR"
+	VAL = "VAL"
 
 class Bond:
 	def __init__(self, atom1, atom2, forcefield):
@@ -37,7 +64,11 @@ class Residue:
 		self.child_atom_idx = 0
 		self.parent_atom_idx = 0
 		self.child_peptide = None
+		self.bond_length = 4.5
+		self.torsion_angle = 0.0
+		self.bond_axis = None
 		self.child_transform_pos = None
+		self.color = [random.random(), random.random(), random.random()]
 
 	def add_atom(self, atom):
 		self.atoms.append(atom)
@@ -60,9 +91,8 @@ class Residue:
 	def add_child(self, child):
 		loc_from = self.atoms[self.child_atom_idx].get_position()
 		loc_to = child.atoms[child.parent_atom_idx].get_position()
-		self.child_transform_pos = [loc_from[i] - loc_to[i] for i in  xrange(0, 3)]
-		# TODO: replace with native bond length
-		self.child_transform_pos[1] += 1.5
+		t = [loc_from[i] - loc_to[i] for i in  xrange(0, 3)]
+		self.bond_axis = Vector3(pyrr.vector.normalise(Vector3(t)))
 		self.child_peptide = child
 
 	def render(self):
@@ -74,10 +104,10 @@ class Residue:
 				glPushMatrix()
 				glTranslatef(pos[0], pos[1], pos[2])
 				if i == self.child_atom_idx:
-					glColor3f(1.0, 0.0, 0.0)
+					glColor3f(self.color[0], self.color[1], self.color[2])
 					r = 0.2
 				elif i == self.parent_atom_idx:
-					glColor3f(0.0, 0.0, 1.0)
+					glColor3f(self.color[0], self.color[1], self.color[2])
 					r = 0.2
 				else:
 					glColor3f(0.5, 0.5, 0.5)
@@ -93,22 +123,24 @@ class Residue:
 				continue
 			pos1 = a1.get_position()
 			pos2= a2.get_position()
-			glColor3f(1.0, 1.0, 1.0)
+			glColor3f(self.color[0], self.color[1], self.color[2])
 			glVertex3f(pos1[0], pos1[1], pos1[2])
 			glVertex3f(pos2[0], pos2[1], pos2[2])
 		glEnd()
 		# render the child
 		if self.child_peptide:
+			glLineWidth(8.0)
 			glBegin(GL_LINES)
-			glColor3f(0.0, 1.0, 0.0)
+			glColor3f(1.0, 0.0, 0.0)
 			loc_from = self.atoms[self.child_atom_idx].get_position()
 			loc_to = self.child_peptide.atoms[self.child_peptide.parent_atom_idx].get_position()
 			glVertex3f(loc_from[0], loc_from[1], loc_from[2])
-			glColor3f(0.0, 1.0, 1.0)
-			glVertex3f(self.child_transform_pos[0] + loc_to[0], self.child_transform_pos[1] + loc_to[1], self.child_transform_pos[2] + loc_to[2])
+			glColor3f(0.0, 0.0, 1.0)
+			glVertex3f(self.bond_axis.x*self.bond_length + loc_to[0], self.bond_axis.y*self.bond_length + loc_to[1], self.bond_axis.z*self.bond_length + loc_to[2])
 			glEnd()
 			glPushMatrix()
-			glTranslatef(self.child_transform_pos[0], self.child_transform_pos[1], self.child_transform_pos[2])
+			glTranslatef(self.bond_axis.x*self.bond_length, self.bond_axis.y*self.bond_length, self.bond_axis.z*self.bond_length)
+			glRotatef(random.random()*5.0, self.bond_axis.x, self.bond_axis.y, self.bond_axis.z)
 			self.child_peptide.render()
 			glPopMatrix()
 
@@ -122,7 +154,6 @@ class ForceField:
 			fname = "_".join(row[2:]).lower() + ".pdb"
 			pdb_map[row[0].upper()] = fname
 			self.symbol_to_resname[row[1]] = row[0].upper()
-
 		# Read in geometric information for each residue from PDB:
 		residues = {}
 		for key in pdb_map:
@@ -135,7 +166,6 @@ class ForceField:
 			z = map(float, map(itemgetter(7), contents))
 			all_data = zip(atoms, residue, x, y, z)
 			residues[residue[0]] = all_data
-
 		self.residues = residues
 		tree = etree.parse(data_file)
 		root = tree.getroot()
@@ -156,11 +186,11 @@ class ForceField:
 				continue
 			res_name = self.symbol_to_resname[symbol]
 			if i == 0:
-				res_name = 'N' + res_name
+				res_name = SYMBOL.NITROGEN + res_name
 				root = curr = self._get_residue(res_name)
 			else:
 				if i == len(sequence) - 1 :
-					res_name = 'C' + res_name
+					res_name = SYMBOL.CARBON + res_name
 				tmp = curr
 				curr = self._get_residue(res_name)
 				tmp.add_child(curr)
@@ -169,13 +199,13 @@ class ForceField:
 	def _get_residue(self, residue_name):
 		geometry = self._get_geometry_for_residue(residue_name)
 
-		if residue_name == 'HIS':
-			residue_name = 'HIE'
+		# TODO: Replace HIS more intelligently?
+		if residue_name == SYMBOL.HIS:
+			residue_name = SYMBOL.HIS_DEFAULT_ISOMER
 
 		atoms = self._get_atoms_for_residue(residue_name)
 		bonds = self._get_bonds_for_residue(residue_name)
 		external_bonds = self._get_external_bonds_for_residue(residue_name)
-
 
 		atom_names = map(lambda x : x.attrib["name"], atoms)
 		residue_atoms = []
@@ -203,21 +233,21 @@ class ForceField:
 			ret.add_bond(int(bond.attrib["from"]), int(bond.attrib["to"]))
 
 		for bond in external_bonds:
-			if "N" == residue_atoms[int(bond.attrib["from"])].name:
+			# TODO: make bonding order configurable?
+			bond_from_name = residue_atoms[int(bond.attrib["from"])].name
+			if bond_from_name == SYMBOL.NITROGEN:
 				ret.set_parent_idx(int(bond.attrib["from"]))
-			if "C" == residue_atoms[int(bond.attrib["from"])].name:
+			if bond_from_name == SYMBOL.CARBON:
 				ret.set_child_idx(int(bond.attrib["from"]))
-
 		return ret
 
-	def _get_atoms_for_residue(self, residue_name, include_carbon=True, include_nitrogen=True):
+	def _get_atoms_for_residue(self, residue_name):
 		atoms = []
 		for residue in self.field_data['Residue']:
 			if residue_name == residue.attrib['name']:
 				for elem in filter(lambda x : x.tag == 'Atom', residue):
 					atoms.append(elem)
 		return atoms
-
 
 	def _get_bonds_for_residue(self, residue_name):
 		for residue in self.field_data['Residue']:
