@@ -28,8 +28,6 @@ class Atom:
 	def get_position(self):
 		return self.pos
 
-
-
 class Residue:
 	def __init__(self, symbol, forcefield):
 		self.symbol = symbol
@@ -39,6 +37,7 @@ class Residue:
 		self.child_atom_idx = 0
 		self.parent_atom_idx = 0
 		self.child_peptide = None
+		self.child_transform_pos = None
 
 	def add_atom(self, atom):
 		self.atoms.append(atom)
@@ -59,24 +58,30 @@ class Residue:
 		pass
 
 	def add_child(self, child):
-		bond_length = 0.1
+		loc_from = self.atoms[self.child_atom_idx].get_position()
+		loc_to = child.atoms[child.parent_atom_idx].get_position()
+		self.child_transform_pos = [loc_from[i] - loc_to[i] for i in  xrange(0, 3)]
+		# TODO: replace with native bond length
+		self.child_transform_pos[1] += 1.5
 		self.child_peptide = child
 
 	def render(self):
 		# render each of the atoms
 		for i, atom in enumerate(self.atoms):
 			if atom != None:
+				r = 0.1
 				pos = atom.get_position()
-				print pos
 				glPushMatrix()
 				glTranslatef(pos[0], pos[1], pos[2])
 				if i == self.child_atom_idx:
 					glColor3f(1.0, 0.0, 0.0)
+					r = 0.2
 				elif i == self.parent_atom_idx:
 					glColor3f(0.0, 0.0, 1.0)
+					r = 0.2
 				else:
 					glColor3f(0.5, 0.5, 0.5)
-				glutSolidSphere(0.1, 20, 20)
+				glutSolidSphere(r, 20, 20)
 				glPopMatrix()
 
 		glLineWidth(3.0)
@@ -94,7 +99,18 @@ class Residue:
 		glEnd()
 		# render the child
 		if self.child_peptide:
+			glBegin(GL_LINES)
+			glColor3f(0.0, 1.0, 0.0)
+			loc_from = self.atoms[self.child_atom_idx].get_position()
+			loc_to = self.child_peptide.atoms[self.child_peptide.parent_atom_idx].get_position()
+			glVertex3f(loc_from[0], loc_from[1], loc_from[2])
+			glColor3f(0.0, 1.0, 1.0)
+			glVertex3f(self.child_transform_pos[0] + loc_to[0], self.child_transform_pos[1] + loc_to[1], self.child_transform_pos[2] + loc_to[2])
+			glEnd()
+			glPushMatrix()
+			glTranslatef(self.child_transform_pos[0], self.child_transform_pos[1], self.child_transform_pos[2])
 			self.child_peptide.render()
+			glPopMatrix()
 
 class ForceField:
 	def __init__(self, data_file="data/amber99sb.xml"):
@@ -136,6 +152,8 @@ class ForceField:
 		root = None
 		curr = None
 		for i, symbol in enumerate(sequence):
+			if not symbol.rstrip():
+				continue
 			res_name = self.symbol_to_resname[symbol]
 			if i == 0:
 				res_name = 'N' + res_name
@@ -150,6 +168,10 @@ class ForceField:
 
 	def _get_residue(self, residue_name):
 		geometry = self._get_geometry_for_residue(residue_name)
+
+		if residue_name == 'HIS':
+			residue_name = 'HIE'
+
 		atoms = self._get_atoms_for_residue(residue_name)
 		bonds = self._get_bonds_for_residue(residue_name)
 		external_bonds = self._get_external_bonds_for_residue(residue_name)

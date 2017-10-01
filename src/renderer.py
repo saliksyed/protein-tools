@@ -5,8 +5,9 @@ import sys
 import math
 import traceback
 from topology import *
+from pyshader import Editor
 
-class Renderer:
+class Viz(Editor):
     RES8K = [7680, 4320]
     RES4K = [3840, 2160]
     RES720P = [1280, 720]
@@ -19,73 +20,44 @@ class Renderer:
     RES1920 = [1920, 1200]
 
     def __init__(self, resolution, chain):
+        Editor.__init__(self, resolution)
         self.chain = chain
-        self.eye_pos = [-4.95, 13.65, -10.43]
-        self.target_dist = 10.
-        self.angle = 0.0
-        self.tilt_angle = 0.0
-        self.state = None
-        self.scale = 1.0
-        self.angle = 0.0
-        self.width = resolution[0]
-        self.height = resolution[1]
-        self.init_gl()
+        self.shader('render', 'test.frag', 'project.vert')
 
-    def move(self, key, x, y):
-        """
-            Handle keyboard controls
-        """
-        if key == 'w':
-            self.scale += 0.1
-        elif key == 'a':
-            self.angle += 1.0
-        elif key == 's':
-            self.scale -= 0.1
-        elif key == 'd':
-            self.angle -= 1.
-
-    def init_gl(self):
-        glutInit(sys.argv)
-        glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
-        glutInitWindowSize(self.width, self.height)
-        glutCreateWindow('Visualization')
-        glClearColor(0.,0.,0.,1.)
-        glShadeModel(GL_SMOOTH)
-        glEnable(GL_CULL_FACE)
-        glEnable(GL_DEPTH_TEST)
-        glutDisplayFunc(self.display)
-        glutKeyboardFunc(self.move)
-        glMatrixMode(GL_PROJECTION)
-        gluPerspective(45, 1.5, 0.1, 1000.)
-        glMatrixMode(GL_MODELVIEW)
-        gluLookAt(0,0,10,
-                  0,0,0,
-                  0,1,0)
-        glPushMatrix()
-        glutIdleFunc(self.idle)
-        glutMainLoop()
-
-    def display(self):
-        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-        glPushMatrix()
-        color = [1.0,0.,0.,1.]
-        glMaterialfv(GL_FRONT,GL_DIFFUSE,color)
-        glPushMatrix()
-        glRotatef(self.angle, 0, 1.0, 0)
-        glScalef(self.scale, self.scale, self.scale)
+    def draw(self):
         try:
-            c.render()
+            glClearColor(0.,0.,0.,1.)
+            glShadeModel(GL_SMOOTH)
+            glEnable(GL_CULL_FACE)
+            glEnable(GL_DEPTH_TEST)
+            glPushMatrix()
+            self.setup_scene()
+            color = [1.0,0.,0.,1.]
+            glutSolidSphere(10.0, 20, 20)
+            glMaterialfv(GL_FRONT,GL_DIFFUSE,color)
+            self.shader('render').draw()
+            self.chain.render()
+            glPopMatrix()
         except:
             traceback.print_exc()
             raw_input("?")
-        glPopMatrix()
-        glPopMatrix()
-        glutSwapBuffers()
-    
-    def idle(self):
-        glutPostRedisplay()
 
 
 f = ForceField()
-c = f.create_chain('ARNDCQEGILKMPFSTWYV') # todo HISTIDINE does not work!
-r = Renderer(Renderer.RES1080P, c)
+villin = """MTKLSAQVKGSLNITTPGLQIWRIEAMQMVPVPSSTFGSFFDGDCYIILAIHKTASSLSY
+DIHYWIGQDSSLDEQGAAAIYTTQMDDFLKGRAVQHREVQGNESEAFRGYFKQGLVIRKG
+GVASGMKHVETNSYDVQRLLHVKGKRNVVAGEVEMSWKSFNRGDVFLLDLGKLIIQWNGP
+ESTRMERLRGMTLAKEIRDQERGGRTYVGVVDGENELASPKLMEVMNHVLGKRRELKAAV
+PDTVVEPALKAALKLYHVSDSEGNLVVREVATRPLTQDLLSHEDCYILDQGGLKIYVWKG
+KKANEQEKKGAMSHALNFIKAKQYPPSTQVEVQNDGAESAVFQQLFQKWTASNRTSGLGK
+THTVGSVAKVEQVKFDATSMHVKPQVAAQQKMVDDGSGEVQVWRIENLELVPVDSKWLGH
+FYGGDCYLLLYTYLIGEKQHYLLYVWQGSQASQDEITASAYQAVILDQKYNGEPVQIRVP
+MGKEPPHLMSIFKGRMVVYQGGTSRTNNLETGPSTRLFQVQGTGANNTKAFEVPARANFL
+NSNDVFVLKTQSCCYLWCGKGCSGDEREMAKMVADTISRTEKQVVVEGQEPANFWMALGG
+KAPYANTKRLQEENLVITPRLFECSNKTGRFLATEIPDFNQDDLEEDDVFLLDVWDQVFF
+WIGKHANEEEKKAAATTAQEYLKTHPSGRDPETPIIVVKQGHEPPTFTGWFLAWDPFKWS
+NTKSYEDLKAELGNSRDWSQITAEVTSPKVDVFNANSNLSSGPLPIFPLEQLVNKPVEEL
+PEGVDPSRKEEHLSIEDFTQAFGMTPAAFSALPRWKQQNLKKEKGLF"""
+c = f.create_chain(villin) # todo HISTIDINE
+r = Viz(Viz.RES1080P, c)
+r.run()
