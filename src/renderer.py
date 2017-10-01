@@ -8,17 +8,6 @@ from topology import *
 from pyshader import Editor
 
 class Viz(Editor):
-    RES8K = [7680, 4320]
-    RES4K = [3840, 2160]
-    RES720P = [1280, 720]
-    RES1440P = [2560, 1440]
-    RES1080P = [1920, 1080]
-    RES1024 = [1024, 768]
-    RES2880 = [2880, 1800]
-    RES1280 = [1280, 800]
-    RES1440 = [1440, 900]
-    RES1920 = [1920, 1200]
-
     def __init__(self, resolution, chain):
         Editor.__init__(self, resolution)
         self.chain = chain
