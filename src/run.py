@@ -11,10 +11,10 @@ def sample():
     new_conformation = []
     for bond_length, torsion_angle in conformation:
         torsion_angle = 24.0 * (random.random()*0.5 - 0.5)
-        new_conformation.append((0.5, torsion_angle))
+        new_conformation.append((8.0, torsion_angle))
     c.set_conformation(new_conformation)
     while True:
-        new_conformation[1] = (new_conformation[1][0], new_conformation[1][1] + 0.1)
+        new_conformation[0] = (new_conformation[0][0], new_conformation[0][1] + 0.1)
         c.set_conformation(new_conformation)
         time.sleep(0.1)
 
