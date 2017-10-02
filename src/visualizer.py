@@ -13,15 +13,12 @@ class Visualizer(Editor):
     def draw(self):
         try:
             glClearColor(0.,0.,0.,1.)
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
             glShadeModel(GL_SMOOTH)
             glEnable(GL_CULL_FACE)
             glEnable(GL_DEPTH_TEST)
             glPushMatrix()
             self.setup_scene()
-            color = [1.0,0.,0.,1.]
-            glutSolidSphere(10.0, 20, 20)
-            glMaterialfv(GL_FRONT,GL_DIFFUSE,color)
-            self.shader('render').draw()
             self.chain.render()
             glPopMatrix()
         except:

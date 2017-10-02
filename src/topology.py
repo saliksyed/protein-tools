@@ -71,11 +71,10 @@ class Residue:
 		self.child_atom_idx = 0
 		self.parent_atom_idx = 0
 		self.child_peptide = None
-		self.bond_length = 1.0
 		self.color = [random.random(), random.random(), random.random()]
 
 	def get_default_conformation(self):
-		bond_length = 4.5
+		bond_length = 1.45
 		torsion_angle = 0.0
 		ret = [(bond_length, torsion_angle)]
 		if self.child_peptide:
@@ -84,8 +83,8 @@ class Residue:
 			return ret 
 
 	def get_random_conformation(self):
-		bond_length = 4.5
-		torsion_angle = 0.0 #random.random() * 360.0
+		bond_length = 1.45
+		torsion_angle = random.random() * 360.0
 		ret = [(bond_length, torsion_angle)]
 		if self.child_peptide:
 			return ret + self.child_peptide.get_random_conformation()
@@ -106,16 +105,27 @@ class Residue:
 
 	def set_parent_idx(self, idx):
 		self.parent_atom_idx = idx
-
-	def set_side_chain_geometry(self, geometry):
-		pass
 	
 	def add_child(self, child):
-		# TODO: Need to compute bond axis properly using geometry and forcefield dihedrals
-		loc_from = self.atoms[self.child_atom_idx].get_position()
-		loc_to = child.atoms[child.parent_atom_idx].get_position()
+		# TODO: Need to set rotation of child residue 
+		atom_from = self.atoms[self.parent_atom_idx]
+
+		# find all bonds referencing the parent_atom_idx
+		bonds = filter(lambda x : x.get_atom_1() !=None and x.get_atom_2() !=None and (x.get_atom_1() == atom_from or x.get_atom_2() == atom_from), self.bonds)
+
+		# All bonds are N->C
+		a1 = bonds[0].get_atom_1()
+		a2 = bonds[0].get_atom_2()
+		if a1 == atom_from:
+			v = Vector3(a2.get_position()) - Vector3(atom_from.get_position())
+		else:
+			v = Vector3(a1.get_position()) - Vector3(atom_from.get_position())
+		self.bond_axis = -1.0 * Vector3(pyrr.vector.normalise(Vector3(v)))
+
+		loc_from = self.atoms[self.parent_atom_idx].get_position()
+		loc_to = child.atoms[child.child_atom_idx].get_position()
 		t = [loc_from[i] - loc_to[i] for i in  xrange(0, 3)]
-		self.bond_axis = Vector3(pyrr.vector.normalise(Vector3(t)))
+		self.bond_transform = Vector3(t)
 		self.child_peptide = child
 
 	def set_conformation(self, conformation, mat=None, idx=0):
@@ -126,21 +136,14 @@ class Residue:
 					atom.apply_transform(mat)
 			
 		if self.child_peptide:
-			
-			loc_from = self.atoms[self.parent_atom_idx].get_position()
-			loc_to = self.atoms[self.child_atom_idx].get_position()
-			t = [loc_from[i] - loc_to[i] for i in  xrange(0, 3)]
-			t_mat = pyrr.matrix44.create_from_translation(Vector3(t))
 			if (type(mat) == type(None)):
-				mat = t_mat
-			else:
-				mat = pyrr.matrix44.multiply(mat, t_mat)
+				mat = Matrix44.identity()
 
 			transformed_axis = Vector3(pyrr.vector.normalise(pyrr.matrix44.apply_to_vector(mat, self.bond_axis)))
 			rmat = pyrr.matrix44.create_from_axis_rotation(transformed_axis, torsion_angle)
-			tmat = pyrr.matrix44.create_from_translation(bond_length * transformed_axis)
+			tmat = pyrr.matrix44.create_from_translation(self.bond_transform + bond_length * self.bond_axis)
 			curr_t = pyrr.matrix44.multiply(tmat, rmat)
-			curr_t = pyrr.matrix44.multiply(mat, curr_t)
+			curr_t = pyrr.matrix44.multiply(curr_t, mat)
 			self.child_peptide.set_conformation(conformation, curr_t, idx + 1)
 
 	def render(self):
@@ -152,14 +155,16 @@ class Residue:
 				glPushMatrix()
 				glTranslatef(pos[0], pos[1], pos[2])
 				if i == self.child_atom_idx:
-					glColor3f(self.color[0], self.color[1], self.color[2])
+					glColor3f(1.0, 0.0, 0.0)
 					r = 0.2
+					glutSolidSphere(r, 20, 20)
 				elif i == self.parent_atom_idx:
-					glColor3f(self.color[0], self.color[1], self.color[2])
+					glColor3f(0.0, 0.0, 1.0)
 					r = 0.2
+					glutSolidSphere(r, 20, 20)
 				else:
 					glColor3f(0.5, 0.5, 0.5)
-				glutSolidSphere(r, 20, 20)
+					#glutSolidSphere(r, 20, 20)
 				glPopMatrix()
 
 		glLineWidth(3.0)
@@ -177,13 +182,13 @@ class Residue:
 		glEnd()
 		# render the child
 		if self.child_peptide:
-			glLineWidth(8.0)
+			glLineWidth(4.0)
 			glBegin(GL_LINES)
-			glColor3f(1.0, 0.0, 0.0)
-			loc_from = self.atoms[self.child_atom_idx].get_transformed_position()
-			loc_to = self.child_peptide.atoms[self.child_peptide.parent_atom_idx].get_transformed_position()
+			glColor3f(self.color[0], self.color[1], self.color[2])
+			loc_from = self.atoms[self.parent_atom_idx].get_transformed_position()
+			loc_to = self.child_peptide.atoms[self.child_peptide.child_atom_idx].get_transformed_position()
 			glVertex3f(loc_from[0], loc_from[1], loc_from[2])
-			glColor3f(0.0, 0.0, 1.0)
+			glColor3f(self.child_peptide.color[0],self.child_peptide.color[1],self.child_peptide.color[2])
 			glVertex3f(loc_to[0], loc_to[1], loc_to[2])
 			glEnd()
 			self.child_peptide.render()
@@ -243,6 +248,7 @@ class ForceField:
 				curr.color[1] = 1.0
 				curr.color[2] = 0.0
 			color+= 1.0 / len(sequence)
+		root.set_conformation(root.get_default_conformation())
 		return root
 
 	def _get_residue(self, residue_name):
