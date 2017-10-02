@@ -125,6 +125,7 @@ class Residue:
 		loc_from = self.atoms[self.parent_atom_idx].get_position()
 		loc_to = child.atoms[child.child_atom_idx].get_position()
 		t = [loc_from[i] - loc_to[i] for i in  xrange(0, 3)]
+
 		self.bond_transform = Vector3(t)
 		self.child_peptide = child
 
