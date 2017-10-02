@@ -14,19 +14,46 @@ NOTE: This is an unfinished, personal, experimental project. Master may be
 completely broken at any given time! This should *NOT* be used for
 any academic/research work. 
 
-Visualizer is currently limited to 15 amino acids in the sequence
-
 ```
 import sys
 import math
 import traceback
-from topology import Forcefield
+from topology import *
+from visualizer import *
+import threading
+import time
+
 
 f = ForceField()
-villin = """MTKLSAQVKGSLNITTPGLQIWRIE"""
-c = f.create_chain(villin)
+villin = """MTKLSAQVKGSLNITTPGLQIWRIEAMQMVPVPSSTFGSFFDGDCYIILAIHKTASSLSY
+DIHYWIGQDSSLDEQGAAAIYTTQMDDFLKGRAVQHREVQGNESEAFRGYFKQGLVIRKG
+GVASGMKHVETNSYDVQRLLHVKGKRNVVAGEVEMSWKSFNRGDVFLLDLGKLIIQWNGP
+ESTRMERLRGMTLAKEIRDQERGGRTYVGVVDGENELASPKLMEVMNHVLGKRRELKAAV
+PDTVVEPALKAALKLYHVSDSEGNLVVREVATRPLTQDLLSHEDCYILDQGGLKIYVWKG
+KKANEQEKKGAMSHALNFIKAKQYPPSTQVEVQNDGAESAVFQQLFQKWTASNRTSGLGK
+THTVGSVAKVEQVKFDATSMHVKPQVAAQQKMVDDGSGEVQVWRIENLELVPVDSKWLGH
+FYGGDCYLLLYTYLIGEKQHYLLYVWQGSQASQDEITASAYQAVILDQKYNGEPVQIRVP
+MGKEPPHLMSIFKGRMVVYQGGTSRTNNLETGPSTRLFQVQGTGANNTKAFEVPARANFL
+NSNDVFVLKTQSCCYLWCGKGCSGDEREMAKMVADTISRTEKQVVVEGQEPANFWMALGG
+KAPYANTKRLQEENLVITPRLFECSNKTGRFLATEIPDFNQDDLEEDDVFLLDVWDQVFF
+WIGKHANEEEKKAAATTAQEYLKTHPSGRDPETPIIVVKQGHEPPTFTGWFLAWDPFKWS
+NTKSYEDLKAELGNSRDWSQITAEVTSPKVDVFNANSNLSSGPLPIFPLEQLVNKPVEEL
+PEGVDPSRKEEHLSIEDFTQAFGMTPAAFSALPRWKQQNLKKEKGLF"""
+c = f.create_chain(villin[:40]) # just simulate the first 40 residues
+
+# Sample Conformations:
+# count = 0
+# start = time.time()
+# while True:
+#     c.set_conformation(c.get_random_conformation())
+#     # TODO: c.get_energy()
+#     count += 1
+#     if count%10 == 0:
+#         print "%d samples evaluated in %.2f seconds" % (count, (time.time() - start))
+
 r = Visualizer(Visualizer.RES1080P, c)
 r.run()
+
 ```
 
 
