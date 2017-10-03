@@ -25,14 +25,18 @@ PEGVDPSRKEEHLSIEDFTQAFGMTPAAFSALPRWKQQNLKKEKGLF"""
 c = f.create_chain(villin[:40]) # just simulate the first 40 residues
 
 # Sample Conformations:
-# count = 0
-# start = time.time()
-# while True:
-#     c.set_conformation(c.get_random_conformation())
-#     # TODO: c.get_energy()
-#     count += 1
-#     if count%10 == 0:
-#         print "%d samples evaluated in %.2f seconds" % (count, (time.time() - start))
+count = 0
+start = time.time()
+def sample_conformation():
+	global count, start
+	while True:
+	    c.set_conformation(c.get_random_conformation())
+	    # TODO: c.get_energy()
+	    count += 1
+	    if count%10 == 0:
+	        print "%d samples evaluated in %.2f seconds" % (count, (time.time() - start))
+	    time.sleep(0.1)
 
+t = threading.Thread(target=sample_conformation)
+t.start()
 r = Visualizer(1920, 1080, c)
-r.run()
