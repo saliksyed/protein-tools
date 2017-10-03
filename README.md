@@ -17,9 +17,7 @@ Tools to generate unfolded protein models from amino-acid sequences
 
 ### Usage
 
-NOTE: This is an unfinished, personal, experimental project. Master may be
-completely broken at any given time! This should *NOT* be used for
-any academic/research work. 
+NOTE: This is an personal, experimental project. You should check the results prior to using this for academic work!
 
 ```
 import sys
