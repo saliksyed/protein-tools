@@ -5,36 +5,28 @@ from topology import *
 from visualizer import *
 import threading
 import time
-
+import random
 
 f = ForceField()
-villin = """MTKLSAQVKGSLNITTPGLQIWRIEAMQMVPVPSSTFGSFFDGDCYIILAIHKTASSLSY
-DIHYWIGQDSSLDEQGAAAIYTTQMDDFLKGRAVQHREVQGNESEAFRGYFKQGLVIRKG
-GVASGMKHVETNSYDVQRLLHVKGKRNVVAGEVEMSWKSFNRGDVFLLDLGKLIIQWNGP
-ESTRMERLRGMTLAKEIRDQERGGRTYVGVVDGENELASPKLMEVMNHVLGKRRELKAAV
-PDTVVEPALKAALKLYHVSDSEGNLVVREVATRPLTQDLLSHEDCYILDQGGLKIYVWKG
-KKANEQEKKGAMSHALNFIKAKQYPPSTQVEVQNDGAESAVFQQLFQKWTASNRTSGLGK
-THTVGSVAKVEQVKFDATSMHVKPQVAAQQKMVDDGSGEVQVWRIENLELVPVDSKWLGH
-FYGGDCYLLLYTYLIGEKQHYLLYVWQGSQASQDEITASAYQAVILDQKYNGEPVQIRVP
-MGKEPPHLMSIFKGRMVVYQGGTSRTNNLETGPSTRLFQVQGTGANNTKAFEVPARANFL
-NSNDVFVLKTQSCCYLWCGKGCSGDEREMAKMVADTISRTEKQVVVEGQEPANFWMALGG
-KAPYANTKRLQEENLVITPRLFECSNKTGRFLATEIPDFNQDDLEEDDVFLLDVWDQVFF
-WIGKHANEEEKKAAATTAQEYLKTHPSGRDPETPIIVVKQGHEPPTFTGWFLAWDPFKWS
-NTKSYEDLKAELGNSRDWSQITAEVTSPKVDVFNANSNLSSGPLPIFPLEQLVNKPVEEL
-PEGVDPSRKEEHLSIEDFTQAFGMTPAAFSALPRWKQQNLKKEKGLF"""
-c = f.create_chain(villin[:40]) # just simulate the first 40 residues
-
+villinN68H = """LSDEDFKAVFGMTRSAFANLPLWKQQHLKKEKGLF"""
+c = f.create_chain(villinN68H)
+c.write_to_pdb("data/output.pdb")
 # Sample Conformations:
 count = 0
 start = time.time()
 def sample_conformation():
 	global count, start
+	conformation = c.get_conformation()
 	while True:
-	    c.set_conformation(c.get_random_conformation())
-	    count += 1
-	    if count%10 == 0:
-	        print "%d samples evaluated in %.2f seconds" % (count, (time.time() - start))
-	    time.sleep(0.1)
+		try:
+			conformation[random.randint(0, len(conformation)-1)][1] += 0.5
+			c.set_conformation(conformation)
+			count += 1
+			if count%10 == 0:
+			    print "%d samples evaluated in %.2f seconds" % (count, (time.time() - start))
+			time.sleep(0.1)
+		except:
+			traceback.print_exc()
 
 t = threading.Thread(target=sample_conformation)
 t.start()

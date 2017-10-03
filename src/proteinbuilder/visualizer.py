@@ -58,7 +58,7 @@ class Visualizer:
                         glColor3f(0.5, 0.5, 0.5)
                         glutSolidSphere(0.1, 20, 20)
                     glPopMatrix()
-
+            
             glLineWidth(3.0)
             glBegin(GL_LINES)
             for bond in chain.bonds:
