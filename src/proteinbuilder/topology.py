@@ -1,8 +1,5 @@
 import xml.etree.ElementTree as etree
 import numpy as np
-from OpenGL.GLUT import *
-from OpenGL.GLU import *
-from OpenGL.GL import *
 from operator import itemgetter
 from pyrr import Matrix44, Vector3, Vector4
 import pyrr
@@ -74,7 +71,7 @@ class Residue:
 		self.color = [random.random(), random.random(), random.random()]
 
 	def get_default_conformation(self):
-		bond_length = 10.5
+		bond_length = 1.47
 		torsion_angle = 0.0
 		ret = [(bond_length, torsion_angle)]
 		if self.child_peptide:
@@ -83,7 +80,7 @@ class Residue:
 			return ret 
 
 	def get_random_conformation(self):
-		bond_length = 10.5
+		bond_length = 1.47
 		torsion_angle = random.random() * 360.0
 		ret = [(bond_length, torsion_angle)]
 		if self.child_peptide:
@@ -118,7 +115,6 @@ class Residue:
 		return self.atoms[self.parent_atom_idx]
 
 	def add_child(self, child):
-		# TODO: Need to set rotation of child residue 
 		atom_from = self.atoms[self.parent_atom_idx]
 		atom_to = child.atoms[child.child_atom_idx]
 		# find all bonds referencing the parent_atom_idx
@@ -133,7 +129,9 @@ class Residue:
 			v = Vector3(a2.get_position()) - Vector3(atom_from.get_position())
 		else:
 			v = Vector3(a1.get_position()) - Vector3(atom_from.get_position())
-		self.bond_axis = -1.0 * Vector3(pyrr.vector.normalise(Vector3(v)))
+
+		# TODO: Is this right? seems like all backbone bonds should be 180 deg bond angle. Looks correct visually
+		self.bond_axis = -1.0 * Vector3([1,0,0])
 
 		loc_from = self.atoms[self.parent_atom_idx].get_position()
 		loc_to = child.atoms[child.child_atom_idx].get_position()
@@ -161,51 +159,6 @@ class Residue:
 			curr_t = pyrr.matrix44.multiply(curr_t, mat)
 			self.child_peptide.set_conformation(conformation, curr_t, idx + 1)
 
-	def render(self):
-		# render each of the atoms
-		for i, atom in enumerate(self.atoms):
-			if atom != None:
-				r = 0.1
-				pos = atom.get_transformed_position()
-				glPushMatrix()
-				glTranslatef(pos[0], pos[1], pos[2])
-				if i == self.child_atom_idx:
-					glColor3f(1.0, 0.0, 0.0)
-					r = 0.2
-					glutSolidSphere(r, 20, 20)
-				elif i == self.parent_atom_idx:
-					glColor3f(0.0, 0.0, 1.0)
-					r = 0.2
-					glutSolidSphere(r, 20, 20)
-				else:
-					glColor3f(0.5, 0.5, 0.5)
-					glutSolidSphere(0.1, 20, 20)
-				glPopMatrix()
-
-		glLineWidth(3.0)
-		glBegin(GL_LINES)
-		for bond in self.bonds:
-			a1 = bond.get_atom_1()
-			a2 = bond.get_atom_2()
-			if a1 == None or a2 == None:
-				continue
-			pos1 = a1.get_transformed_position()
-			pos2 = a2.get_transformed_position()
-			glColor3f(self.color[0], self.color[1], self.color[2])
-			glVertex3f(pos1[0], pos1[1], pos1[2])
-			glVertex3f(pos2[0], pos2[1], pos2[2])
-		glEnd()
-		# render the child
-		if self.child_peptide:
-			glLineWidth(4.0)
-			glBegin(GL_LINES)
-			glColor3f(1.0, 0.0, 1.0)
-			loc_from = self.atoms[self.parent_atom_idx].get_transformed_position()
-			loc_to = self.child_peptide.atoms[self.child_peptide.child_atom_idx].get_transformed_position()
-			glVertex3f(loc_from[0], loc_from[1], loc_from[2])
-			glVertex3f(loc_to[0], loc_to[1], loc_to[2])
-			glEnd()
-			self.child_peptide.render()
 
 class ForceField:
 	def __init__(self, data_file="data/amber99sb.xml"):
