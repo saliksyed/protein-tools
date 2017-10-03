@@ -251,13 +251,11 @@ class ForceField:
 		for i, symbol in enumerate(sequence):
 			if not symbol.rstrip():
 				continue
-			res_name = self._symbol_to_residue_name(symbol, i==0, i==len(sequence) - 1)
-
-			if not root:
-				root = self._get_residue(res_name)
+			if root == None:
+				curr = root = self.get_residue(symbol, i==0, i==len(sequence) - 1)
 			else:
 				tmp = curr
-				curr = self._get_residue(res_name)
+				curr = self.get_residue(symbol, i==0, i==len(sequence) - 1)
 				tmp.add_child(curr)
 		root.set_conformation(root.get_default_conformation())
 		return root

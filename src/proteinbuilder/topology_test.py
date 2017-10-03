@@ -61,6 +61,8 @@ class TestProteinBuilder(unittest.TestCase):
 			self.assertEquals(self.no_overlapping_atoms(c), True)
 		return True
 
+	# TODO: Need to write a test which makes sure that the only missing
+	# geometry corresponds to atoms that should be missing due to bonds!
 if __name__ == '__main__':
     unittest.main()
 
