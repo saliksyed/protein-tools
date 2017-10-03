@@ -68,13 +68,13 @@ class Residue:
 		self.atoms = []
 		self.bonds = []
 		self.forcefield = forcefield
-		self.child_atom_idx = 0
-		self.parent_atom_idx = 0
+		self.child_atom_idx = None
+		self.parent_atom_idx = None
 		self.child_peptide = None
 		self.color = [random.random(), random.random(), random.random()]
 
 	def get_default_conformation(self):
-		bond_length = 1.45
+		bond_length = 10.5
 		torsion_angle = 0.0
 		ret = [(bond_length, torsion_angle)]
 		if self.child_peptide:
@@ -83,7 +83,7 @@ class Residue:
 			return ret 
 
 	def get_random_conformation(self):
-		bond_length = 1.45
+		bond_length = 10.5
 		torsion_angle = random.random() * 360.0
 		ret = [(bond_length, torsion_angle)]
 		if self.child_peptide:
@@ -106,6 +106,17 @@ class Residue:
 	def set_parent_idx(self, idx):
 		self.parent_atom_idx = idx
 	
+
+	def get_child_atom(self):
+		if self.child_atom_idx == None:
+			return None
+		return self.atoms[self.child_atom_idx]
+
+	def get_parent_atom(self):
+		if self.parent_atom_idx == None:
+			return None
+		return self.atoms[self.parent_atom_idx]
+
 	def add_child(self, child):
 		# TODO: Need to set rotation of child residue 
 		atom_from = self.atoms[self.parent_atom_idx]
@@ -168,7 +179,7 @@ class Residue:
 					glutSolidSphere(r, 20, 20)
 				else:
 					glColor3f(0.5, 0.5, 0.5)
-					#glutSolidSphere(r, 20, 20)
+					glutSolidSphere(0.1, 20, 20)
 				glPopMatrix()
 
 		glLineWidth(3.0)
@@ -188,11 +199,11 @@ class Residue:
 		if self.child_peptide:
 			glLineWidth(4.0)
 			glBegin(GL_LINES)
-			glColor3f(self.color[0], self.color[1], self.color[2])
+			glColor3f(1.0, 0.0, 1.0)
 			loc_from = self.atoms[self.parent_atom_idx].get_transformed_position()
 			loc_to = self.child_peptide.atoms[self.child_peptide.child_atom_idx].get_transformed_position()
 			glVertex3f(loc_from[0], loc_from[1], loc_from[2])
-			glColor3f(self.child_peptide.color[0],self.child_peptide.color[1],self.child_peptide.color[2])
+			#glColor3f(self.child_peptide.color[0],self.child_peptide.color[1],self.child_peptide.color[2])
 			glVertex3f(loc_to[0], loc_to[1], loc_to[2])
 			glEnd()
 			self.child_peptide.render()
@@ -231,6 +242,9 @@ class ForceField:
 					self.field_data[sub_child.tag] = []
 				self.field_data[sub_child.tag].append(sub_child)
 
+	def get_residue_symbols(self):
+		return self.symbol_to_resname.keys()
+
 	def create_chain(self, sequence):
 		root = None
 		curr = None
@@ -238,30 +252,32 @@ class ForceField:
 		for i, symbol in enumerate(sequence):
 			if not symbol.rstrip():
 				continue
-			res_name = self.symbol_to_resname[symbol]
-			if i == 0:
-				res_name = SYMBOL.NITROGEN + res_name
-				root = curr = self._get_residue(res_name)
+			res_name = self._symbol_to_residue_name(symbol, i==0, i==len(sequence) - 1)
+
+			if not root:
+				root = self._get_residue(res_name)
 			else:
-				if i == len(sequence) - 1 :
-					res_name = SYMBOL.CARBON + res_name
 				tmp = curr
 				curr = self._get_residue(res_name)
 				tmp.add_child(curr)
-				curr.color[0] = color
-				curr.color[1] = 1.0
-				curr.color[2] = 0.0
-			color+= 1.0 / len(sequence)
 		root.set_conformation(root.get_default_conformation())
 		return root
 
-	def _get_residue(self, residue_name):
-		geometry = self._get_geometry_for_residue(residue_name)
+	def _symbol_to_residue_name(self, symbol, is_start_of_chain=False, is_end_of_chain=False):
+		res_name = self.symbol_to_resname[symbol]
+		if res_name == SYMBOL.HIS:
+			res_name = SYMBOL.HIS_DEFAULT_ISOMER
+		if is_start_of_chain:
+			return SYMBOL.CARBON + res_name
+		elif is_end_of_chain:
+			return SYMBOL.NITROGEN + res_name
+		else:
+			return res_name
 
-		# TODO: Replace HIS more intelligently?
-		if residue_name == SYMBOL.HIS:
-			residue_name = SYMBOL.HIS_DEFAULT_ISOMER
-
+	def get_residue(self, symbol, is_start_of_chain=False, is_end_of_chain=False):
+		residue_name = self._symbol_to_residue_name(symbol, is_start_of_chain, is_end_of_chain)
+		print residue_name
+		geometry = self._get_geometry_for_symbol(symbol)
 		atoms = self._get_atoms_for_residue(residue_name)
 		bonds = self._get_bonds_for_residue(residue_name)
 		external_bonds = self._get_external_bonds_for_residue(residue_name)
@@ -269,8 +285,7 @@ class ForceField:
 		atom_names = map(lambda x : x.attrib["name"], atoms)
 		residue_atoms = []
 		atom_geometry = {}
-		print "RESDIUE:"
-		print residue_name
+
 		for atom in geometry:
 			symbol = atom[0]
 			letter_found = False
@@ -292,13 +307,18 @@ class ForceField:
 			name = atom.attrib["name"]
 			if name in atom_geometry:
 				residue_atoms.append(Atom(name, atom_geometry[name], self))
-			elif name[:-1] + '1' in atom_geometry:
-				residue_atoms.append(Atom(name, atom_geometry[name[:-1] + '1'], self))
 			elif name == "H":
-				residue_atoms.append(Atom(name, atom_geometry['H1'], self))
+				residue_atoms.append(Atom(name, atom_geometry['H2'], self))
 			elif name == "OXT":
-				residue_atoms.append(Atom(name, atom_geometry['HOC'], self))
+				if 'OC' in atom_geometry:
+					residue_atoms.append(Atom(name, atom_geometry['OC'], self))
+				elif 'HOC' in atom_geometry:
+					residue_atoms.append(Atom(name, atom_geometry['HOC'], self))
+				else:
+					residue_atoms.append(None)	
 			else:
+				print "MISSING"
+				print name
 				residue_atoms.append(None)
 
 		for atom in residue_atoms:
@@ -334,9 +354,8 @@ class ForceField:
 			if residue_name == residue.attrib['name']:
 				return filter(lambda x : x.tag == 'ExternalBond', residue)
 
-	def _get_geometry_for_residue(self, residue_name):
-		if len(residue_name) == 4:
-			residue_name = residue_name[1:]
+	def _get_geometry_for_symbol(self, symbol):
+		residue_name = self.symbol_to_resname[symbol]
 		if residue_name in self.residues:
 			return self.residues[residue_name]
 		else:
