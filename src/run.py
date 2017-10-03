@@ -22,7 +22,7 @@ KAPYANTKRLQEENLVITPRLFECSNKTGRFLATEIPDFNQDDLEEDDVFLLDVWDQVFF
 WIGKHANEEEKKAAATTAQEYLKTHPSGRDPETPIIVVKQGHEPPTFTGWFLAWDPFKWS
 NTKSYEDLKAELGNSRDWSQITAEVTSPKVDVFNANSNLSSGPLPIFPLEQLVNKPVEEL
 PEGVDPSRKEEHLSIEDFTQAFGMTPAAFSALPRWKQQNLKKEKGLF"""
-c = f.create_chain(villin[:40]) # just simulate the first 40 residues
+c = f.create_chain(villin) # just simulate the first 40 residues
 
 # Sample Conformations:
 # count = 0
@@ -34,5 +34,5 @@ c = f.create_chain(villin[:40]) # just simulate the first 40 residues
 #     if count%10 == 0:
 #         print "%d samples evaluated in %.2f seconds" % (count, (time.time() - start))
 
-r = Visualizer(Visualizer.RES1080P, c)
-r.run()
+# r = Visualizer(Visualizer.RES1080P, c)
+# r.run()

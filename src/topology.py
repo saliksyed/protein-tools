@@ -109,9 +109,11 @@ class Residue:
 	def add_child(self, child):
 		# TODO: Need to set rotation of child residue 
 		atom_from = self.atoms[self.parent_atom_idx]
-
+		atom_to = child.atoms[child.child_atom_idx]
 		# find all bonds referencing the parent_atom_idx
+		# TODO: these should be helper methods!
 		bonds = filter(lambda x : x.get_atom_1() !=None and x.get_atom_2() !=None and (x.get_atom_1() == atom_from or x.get_atom_2() == atom_from), self.bonds)
+		child_bonds = filter(lambda x : x.get_atom_1() !=None and x.get_atom_2() !=None and (x.get_atom_1() == atom_to or x.get_atom_2() == atom_to), self.bonds)
 
 		# All bonds are N->C
 		a1 = bonds[0].get_atom_1()
@@ -141,6 +143,7 @@ class Residue:
 				mat = Matrix44.identity()
 
 			transformed_axis = Vector3(pyrr.vector.normalise(pyrr.matrix44.apply_to_vector(mat, self.bond_axis)))
+			# TODO: do rotation based on harmonic bond angle
 			rmat = pyrr.matrix44.create_from_axis_rotation(transformed_axis, torsion_angle)
 			tmat = pyrr.matrix44.create_from_translation(self.bond_transform + bond_length * self.bond_axis)
 			curr_t = pyrr.matrix44.multiply(tmat, rmat)
@@ -265,20 +268,36 @@ class ForceField:
 
 		atom_names = map(lambda x : x.attrib["name"], atoms)
 		residue_atoms = []
-		atom_geomtery = {}
+		atom_geometry = {}
+		print "RESDIUE:"
+		print residue_name
 		for atom in geometry:
 			symbol = atom[0]
-			letters = filter(lambda x : not x.isdigit(), symbol)
-			numbers = filter(lambda x : x.isdigit(), symbol)
-			symbol_normalized = "".join(letters + numbers)
-			if symbol_normalized in atom_names:
-				atom_geomtery[symbol_normalized] = list(atom[-3:])
-
+			letter_found = False
+			# normalize the names between the PDB files and amber naming convention
+			suffix = symbol_normalized = ""
+			for char in symbol:
+				if not char.isdigit():
+					letter_found = True
+				if letter_found:
+					symbol_normalized += char
+				else:
+					suffix += char
+			symbol_normalized += suffix
+			atom_geometry[symbol_normalized] = list(atom[-3:])
+			
 		ret = Residue(residue_name, self)
+
 		for atom in atoms:
 			name = atom.attrib["name"]
-			if name in atom_geomtery:
-				residue_atoms.append(Atom(name, atom_geomtery[name], self))
+			if name in atom_geometry:
+				residue_atoms.append(Atom(name, atom_geometry[name], self))
+			elif name[:-1] + '1' in atom_geometry:
+				residue_atoms.append(Atom(name, atom_geometry[name[:-1] + '1'], self))
+			elif name == "H":
+				residue_atoms.append(Atom(name, atom_geometry['H1'], self))
+			elif name == "OXT":
+				residue_atoms.append(Atom(name, atom_geometry['HOC'], self))
 			else:
 				residue_atoms.append(None)
 
