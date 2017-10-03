@@ -203,7 +203,6 @@ class Residue:
 			loc_from = self.atoms[self.parent_atom_idx].get_transformed_position()
 			loc_to = self.child_peptide.atoms[self.child_peptide.child_atom_idx].get_transformed_position()
 			glVertex3f(loc_from[0], loc_from[1], loc_from[2])
-			#glColor3f(self.child_peptide.color[0],self.child_peptide.color[1],self.child_peptide.color[2])
 			glVertex3f(loc_to[0], loc_to[1], loc_to[2])
 			glEnd()
 			self.child_peptide.render()
@@ -222,7 +221,7 @@ class ForceField:
 		residues = {}
 		for key in pdb_map:
 			fname = pdb_map[key]
-			contents = filter(lambda x : x[0]=='ATOM', map(lambda x : x.split(), open("data/" + fname, "r").readlines()[:-1]))
+			contents = filter(lambda x : x[0]=='ATOM', map(lambda x : x.split(), open("data/v3PDB/" + fname, "r").readlines()[:-1]))
 			atoms = map(itemgetter(2), contents) 
 			residue = map(itemgetter(3), contents)
 			x = map(float, map(itemgetter(5), contents))
@@ -276,7 +275,6 @@ class ForceField:
 
 	def get_residue(self, symbol, is_start_of_chain=False, is_end_of_chain=False):
 		residue_name = self._symbol_to_residue_name(symbol, is_start_of_chain, is_end_of_chain)
-		print residue_name
 		geometry = self._get_geometry_for_symbol(symbol)
 		atoms = self._get_atoms_for_residue(residue_name)
 		bonds = self._get_bonds_for_residue(residue_name)
@@ -287,19 +285,7 @@ class ForceField:
 		atom_geometry = {}
 
 		for atom in geometry:
-			symbol = atom[0]
-			letter_found = False
-			# normalize the names between the PDB files and amber naming convention
-			suffix = symbol_normalized = ""
-			for char in symbol:
-				if not char.isdigit():
-					letter_found = True
-				if letter_found:
-					symbol_normalized += char
-				else:
-					suffix += char
-			symbol_normalized += suffix
-			atom_geometry[symbol_normalized] = list(atom[-3:])
+			atom_geometry[atom[0]] = list(atom[-3:])
 			
 		ret = Residue(residue_name, self)
 
@@ -307,18 +293,7 @@ class ForceField:
 			name = atom.attrib["name"]
 			if name in atom_geometry:
 				residue_atoms.append(Atom(name, atom_geometry[name], self))
-			elif name == "H":
-				residue_atoms.append(Atom(name, atom_geometry['H2'], self))
-			elif name == "OXT":
-				if 'OC' in atom_geometry:
-					residue_atoms.append(Atom(name, atom_geometry['OC'], self))
-				elif 'HOC' in atom_geometry:
-					residue_atoms.append(Atom(name, atom_geometry['HOC'], self))
-				else:
-					residue_atoms.append(None)	
 			else:
-				print "MISSING"
-				print name
 				residue_atoms.append(None)
 
 		for atom in residue_atoms:

@@ -34,14 +34,15 @@ class TestProteinBuilder(unittest.TestCase):
 	def no_overlapping_atoms(self, c):
 		for i in xrange(0, len(c.atoms)):
 			for j in xrange(i + 1, len(c.atoms)):
-				d = pyrr.vector.length(Vector3(c.atoms[i].get_position()) - Vector3(c.atoms[j].get_position()))
-				if d < 0.0001:
-					print "Overlap found"
-					print c.symbol
-					print c.atoms[i].name
-					print c.atoms[j].name
-					print "=========="
-					return i, j
+				if c.atoms[i] != None and c.atoms[j] != None:
+					d = pyrr.vector.length(Vector3(c.atoms[i].get_position()) - Vector3(c.atoms[j].get_position()))
+					if d < 0.0001:
+						print "Overlap found"
+						print c.symbol
+						print c.atoms[i].name
+						print c.atoms[j].name
+						print "=========="
+						return i, j
 		return True
 
 
