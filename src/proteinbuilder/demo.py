@@ -31,7 +31,6 @@ def sample_conformation():
 	global count, start
 	while True:
 	    c.set_conformation(c.get_random_conformation())
-	    # TODO: c.get_energy()
 	    count += 1
 	    if count%10 == 0:
 	        print "%d samples evaluated in %.2f seconds" % (count, (time.time() - start))
