@@ -7,8 +7,6 @@ Tools to generate unfolded protein models from amino-acid sequences
 * Set backbone conformation using torsion angles / bond-lengths
 * Export topology to PDB v3.0 format
 
-![Screenshot](https://github.com/saliksyed/protein-tools/blob/master/docs/screenshot.png)
-
 ### Dependencies
 * [Numpy](http://www.numpy.org/)
 * [Pyrr matrix library](https://github.com/adamlwgriffiths/Pyrr)
