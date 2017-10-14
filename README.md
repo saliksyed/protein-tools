@@ -26,6 +26,10 @@ villinN68H = """LSDEDFKAVFGMTRSAFANLPLWKQQHLKKEKGLF"""
 topology, positions = build_topology(villinN68H, forcefield)
 
 topology.setUnitCellDimensions([6.0, 6.0, 6.0])
+
+print "Writing PDB File"
+PDBFile.writeFile(topology, positions, open("output.pdb", "w"))
+
 print "Creating System"
 system = forcefield.createSystem(topology, nonbondedMethod=PME, nonbondedCutoff=1*nanometer, constraints=HBonds, ignoreExternalBonds=True)
 integrator = LangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
