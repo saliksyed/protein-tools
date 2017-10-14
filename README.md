@@ -1,52 +1,41 @@
 protein-tools
 ============
-Tools to generate unfolded protein models from amino-acid sequences
+Tools to generate unfolded protein models from amino-acid sequences for OpenMM
 
 ### Features
 * Convert amino-acid sequence into unfolded topology
-* Set backbone conformation using torsion angles / bond-lengths
 * Export topology to PDB v3.0 format
 
 ### Dependencies
-* [Numpy](http://www.numpy.org/)
-* [Pyrr matrix library](https://github.com/adamlwgriffiths/Pyrr)
-* [PyOpenGL](https://github.com/mcfletch/pyopengl) (for visualizer)
-* [lxml](http://lxml.de/)
+* [OpenMM](https://github.com/pandegroup/openmm)
 
 ### Usage
 
 NOTE: This is an personal, experimental project. You should check the results prior to using this for academic work!
 
 ```
-import sys
-import math
-import traceback
-from topology import *
-from visualizer import *
-import threading
-import time
+from simtk.openmm.app import *
+from simtk.openmm import *
+from simtk.unit import *
+from operator import itemgetter
+from ProteinBuilder import build_topology
+from sys import stdout
 
-f = ForceField()
+forcefield = ForceField('amber99sb.xml', 'tip3p.xml')
 villinN68H = """LSDEDFKAVFGMTRSAFANLPLWKQQHLKKEKGLF"""
-c = f.create_chain(villinN68H)
-c.write_to_pdb("data/output.pdb")
+topology, positions = build_topology(villinN68H, forcefield)
 
-# Sample Conformations:
-count = 0
-start = time.time()
-def sample_conformation():
-	global count, start
-	while True:
-	    c.set_conformation(c.get_random_conformation())
-	    count += 1
-	    if count%10 == 0:
-	        print "%d samples evaluated in %.2f seconds" % (count, (time.time() - start))
-	    time.sleep(0.1)
-
-t = threading.Thread(target=sample_conformation)
-t.start()
-r = Visualizer(1920, 1080, c)
-
+topology.setUnitCellDimensions([6.0, 6.0, 6.0])
+print "Creating System"
+system = forcefield.createSystem(topology, nonbondedMethod=PME, nonbondedCutoff=1*nanometer, constraints=HBonds, ignoreExternalBonds=True)
+integrator = LangevinIntegrator(300*kelvin, 1/picosecond, 0.002*picoseconds)
+simulation = Simulation(topology, system, integrator)
+simulation.context.setPositions(positions)
+simulation.minimizeEnergy()
+simulation.reporters.append(PDBReporter('output.pdb', 1000))
+simulation.reporters.append(StateDataReporter(stdout, 1000, step=True, potentialEnergy=True, temperature=True))
+print "Stepping system"
+simulation.step(10000)
 ```
 
 
